@@ -9,6 +9,12 @@ use bincode::config::WithOtherIntEncoding;
 use serde::export::PhantomData;
 
 error_chain! {
+    errors {
+        BincodeError {
+            description("bincode failure")
+            display("bincode failure")
+        }
+    }
     foreign_links {
         Io(std::io::Error);
         Time(std::time::SystemTimeError);
@@ -27,7 +33,8 @@ macro_rules! measure {
 
 fn main() -> Result<()> {
     measure! {
-        println!("{:?}", bincode::deserialize::<UReplay>(std::fs::read("season12.replay")?.as_slice()));
+        //println!("{:?}", bincode::deserialize::<UReplay>(std::fs::read("season12.replay")?.as_slice()));
+        println!("{:?}", UReplay::parse(std::fs::read("season12.replay")?));
     }
     Ok(())
 }
