@@ -4,7 +4,6 @@ use std::str::Utf8Error;
 use std::{error, fmt};
 
 use serde;
-use std::string::FromUtf16Error;
 
 /// The result of a serialization or deserialization operation.
 pub type Result<T> = ::std::result::Result<T, Error>;

@@ -1,5 +1,5 @@
-use config::{BincodeByteOrder, Options, LittleEndian};
-use std::io::{Read, Cursor};
+use config::{BincodeByteOrder, Options};
+use std::io::Read;
 
 use self::read::{BincodeRead, IoReader, SliceReader};
 use byteorder::ReadBytesExt;
@@ -111,19 +111,20 @@ impl<'de, R: BincodeRead<'de>, O: Options> Deserializer<R, O> {
             len *= 2;
         }
         self.read_bytes(len as u64)?;
-        let bytes = self.reader.get_byte_buffer(len as usize)?;
-        let mut c = Cursor::new(bytes);
+        let vec = self.reader.get_byte_buffer(len as usize)?;
+        let mut bytes = vec.as_slice();
+        //let mut c = Cursor::new(bytes);
         return match is_unicode {
             true => {
                 let mut u16_bytes = vec![0u16; (len/2) as usize];
-                c.read_u16_into::<byteorder::LittleEndian>(u16_bytes.as_mut_slice())?;
+                bytes.read_u16_into::<byteorder::LittleEndian>(u16_bytes.as_mut_slice())?;
                 let a = String::from_utf16(u16_bytes.as_slice())?.trim_matches(char::from(0))
                     .trim_matches('\u{0020}').to_string();
                 Ok(a)
             }
             false => {
                 let mut u8_bytes = vec![0u8; len as usize];
-                c.read(u8_bytes.as_mut_slice());
+                bytes.read(u8_bytes.as_mut_slice())?;
                 Ok(std::str::from_utf8(u8_bytes.as_slice())?.trim_matches
                 (char::from(0))
                     .trim_matches('\u{0020}').to_string())

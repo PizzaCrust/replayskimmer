@@ -1,8 +1,6 @@
 use serde::Deserialize;
 use serde::export::fmt::Debug;
 use serde::export::Formatter;
-use std::io::Cursor;
-use bincode::ErrorKind;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct ReplayMeta {
@@ -41,11 +39,11 @@ impl Debug for Chunk {
 }
 
 impl UReplay {
-    pub fn parse(mut bytes: Vec<u8>) -> crate::Result<UReplay> {
+    pub fn parse(bytes: Vec<u8>) -> crate::Result<UReplay> {
         let mut slice = bytes.as_slice();
         let mut replay: UReplay = bincode::deserialize_from(&mut slice).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?;
         while !slice.is_empty() {
-            replay.chunks.push(bincode::deserialize_from(&mut slice).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?;
+            replay.chunks.push(bincode::deserialize_from(&mut slice).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?);
         }
         Ok(replay)
     }

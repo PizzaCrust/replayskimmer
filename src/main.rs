@@ -4,9 +4,6 @@ mod skimmer;
 
 use skimmer::*;
 use std::time::SystemTime;
-use bincode::Options;
-use bincode::config::WithOtherIntEncoding;
-use serde::export::PhantomData;
 
 error_chain! {
     errors {
