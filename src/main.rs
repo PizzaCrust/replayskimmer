@@ -1,3 +1,4 @@
+mod fnchunk;
 mod uetypes;
 mod uchunk;
 mod skimmer;
@@ -7,6 +8,7 @@ mod skimmer;
 use skimmer::*;
 use std::time::SystemTime;
 use crate::uchunk::{HeaderChunk, EventChunk};
+use crate::fnchunk::Elimination;
 
 error_chain! {
     errors {
@@ -47,7 +49,10 @@ fn main() -> Result<()> {
             //println!("{:?}", bincode::deserialize::<HeaderChunk>(x.data.as_slice()))
             println!("{:?}", HeaderChunk::parse(x));
         } else if x.variant == 3 {
-            println!("{:?}", EventChunk::parse(x, replay.meta.encryption_key.as_slice()))
+            let e_chunk = EventChunk::parse(x, replay.meta.encryption_key.as_slice())?;
+            if e_chunk.group == "playerElim" {
+                println!("{:?}", Elimination::parse(e_chunk))
+            }
         }
     }
     //println!("{:?}", header_chunk);

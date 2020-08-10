@@ -47,13 +47,14 @@ pub struct EventChunk {
     pub metadata: String,
     pub start_time: u32,
     pub end_time: u32,
+    #[serde(with = "serde_bytes")]
     pub data: Vec<u8>
 }
 
 impl EventChunk {
     pub fn parse(c: Chunk, enc_key: &[u8]) -> crate::Result<EventChunk> {
         if c.variant != 3 {
-            return Err(crate::ErrorKind::ReplayParseError("tried to parse another chunk as header chunk".to_string()).into());
+            return Err(crate::ErrorKind::ReplayParseError("tried to parse another chunk as event chunk".to_string()).into());
         }
         let mut event_chunk = bincode::deserialize::<EventChunk>(c.data.as_slice()).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?;
         let cipher = Ecb::<Aes256, Pkcs7>::new_var(enc_key, Default::default()).map_err(|e| crate::ErrorKind::EncryptionError)?;
