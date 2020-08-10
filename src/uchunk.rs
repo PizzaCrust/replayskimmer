@@ -51,13 +51,15 @@ pub struct EventChunk {
     pub data: Vec<u8>
 }
 
+pub type Aes = Ecb<Aes256, Pkcs7>;
+
 impl EventChunk {
     pub fn parse(c: Chunk, enc_key: &[u8]) -> crate::Result<EventChunk> {
         if c.variant != 3 {
             return Err(crate::ErrorKind::ReplayParseError("tried to parse another chunk as event chunk".to_string()).into());
         }
         let mut event_chunk = bincode::deserialize::<EventChunk>(c.data.as_slice())?;
-        let cipher = Ecb::<Aes256, Pkcs7>::new_var(enc_key, Default::default())?;
+        let cipher = Aes::new_var(enc_key, Default::default())?;
         event_chunk.data = cipher.decrypt_vec(event_chunk.data.as_slice())?;
         Ok(event_chunk)
     }

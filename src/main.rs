@@ -1,3 +1,5 @@
+#[cfg(target_os = "windows")]
+mod data;
 mod fnchunk;
 mod uetypes;
 mod uchunk;
@@ -16,6 +18,10 @@ error_chain! {
             description("replay parse failure")
             display("replay parse failure: {}", msg)
         }
+        OodleDecodeError {
+            description("oodle decode failure")
+            display("oodle decode failure")
+        }
     }
     foreign_links {
         Bincode(bincode::Error);
@@ -23,12 +29,13 @@ error_chain! {
         Time(std::time::SystemTimeError);
         Enc(block_modes::BlockModeError);
         Iv(block_modes::InvalidKeyIvLength);
+        Native(libloading::Error);
     }
 }
 
 fn measure(block: fn() -> Result<()>) -> Result<()> {
     let current_time = SystemTime::now();
-    block();
+    block()?;
     println!("took {} ms", SystemTime::now().duration_since(current_time)?.as_millis());
     Ok(())
 }
@@ -36,9 +43,9 @@ fn measure(block: fn() -> Result<()>) -> Result<()> {
 fn main() -> Result<()> {
     measure(|| {
         let replay= UReplay::parse(std::fs::read("season12.replay")?)?;
-        let skim = FNSkim::skim(replay)?;
+        let skim = FNSkim::skim(replay, true)?;
         println!("{:#?}", skim);
         Ok(())
-    });
+    })?;
     Ok(())
 }

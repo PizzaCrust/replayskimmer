@@ -3,6 +3,7 @@ use std::io::{Read, Cursor};
 use byteorder::ReadBytesExt;
 use crate::ureplay::UReplay;
 use serde::Deserialize;
+use crate::data::DataChunk;
 
 #[derive(Debug, PartialEq)]
 pub struct Elimination {
@@ -75,16 +76,28 @@ pub struct FNSkim {
     pub header: HeaderChunk,
     pub team_stats: TeamStats,
     pub match_stats: MatchStats,
-    pub eliminations: Vec<Elimination>
+    pub eliminations: Vec<Elimination>,
+    #[cfg(target_os = "windows")]
+    pub data_chunks: Option<Vec<DataChunk>>
 }
 
 impl FNSkim {
-    pub fn skim(replay: UReplay) -> crate::Result<FNSkim> {
+    pub fn skim(replay: UReplay, data: bool) -> crate::Result<FNSkim> {
+        if data && !cfg!(target_os = "windows") {
+            return Err(crate::ErrorKind::ReplayParseError("Can't parse data as cant decompress data outside of windows".to_string()).into());
+        }
+        #[cfg(target_os = "windows")] let mut data_chunks: Vec<DataChunk> = Vec::new();
         let mut skim = FNSkim::default();
         for x in replay.chunks {
             match x.variant {
                 0 => {
                     skim.header = HeaderChunk::parse(x)?;
+                }
+                #[cfg(target_os = "windows")]
+                1 => {
+                    if data {
+                        data_chunks.push(DataChunk::parse(x, replay.meta.encryption_key.as_slice())?);
+                    }
                 }
                 3 => {
                     let e_chunk = EventChunk::parse(x, replay.meta.encryption_key.as_slice())?;
@@ -104,6 +117,10 @@ impl FNSkim {
                 }
                 _ => {}
             }
+        }
+        #[cfg(target_os = "windows")]
+        if data {
+            skim.data_chunks = Some(data_chunks)
         }
         Ok(skim)
     }
