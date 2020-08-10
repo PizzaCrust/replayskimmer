@@ -6,7 +6,7 @@ mod skimmer;
 
 use skimmer::*;
 use std::time::SystemTime;
-use crate::uchunk::HeaderChunk;
+use crate::uchunk::{HeaderChunk, EventChunk};
 
 error_chain! {
     errors {
@@ -17,6 +17,10 @@ error_chain! {
         ReplayParseError(msg: String) {
             description("replay parse failure")
             display("replay parse failure: {}", msg)
+        }
+        EncryptionError {
+            description("encryption failure")
+            display("encryption failure")
         }
     }
     foreign_links {
@@ -42,6 +46,8 @@ fn main() -> Result<()> {
         if x.variant == 0 {
             //println!("{:?}", bincode::deserialize::<HeaderChunk>(x.data.as_slice()))
             println!("{:?}", HeaderChunk::parse(x));
+        } else if x.variant == 3 {
+            println!("{:?}", EventChunk::parse(x, replay.meta.encryption_key.as_slice()))
         }
     }
     //println!("{:?}", header_chunk);

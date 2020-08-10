@@ -1,7 +1,16 @@
-use crate::skimmer::Chunk;
+use crate::skimmer::{Chunk, UReplay};
 
 use serde::Deserialize;
 use crate::uetypes::{GUID};
+use serde::export::fmt::Debug;
+use serde::export::Formatter;
+use std::io::Read;
+use aes_soft::block_cipher::{NewBlockCipher, BlockCipher};
+use aes_soft::block_cipher::generic_array::GenericArray;
+use block_modes::{Ecb, BlockMode};
+use aes_soft::{Aes128, Aes256};
+use block_modes::block_padding::Pkcs7;
+use bincode::ErrorKind;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct HeaderChunk {
@@ -28,5 +37,33 @@ impl HeaderChunk {
             return Err(crate::ErrorKind::ReplayParseError("tried to parse another chunk as header chunk".to_string()).into());
         }
         Ok(bincode::deserialize::<HeaderChunk>(chunk.data.as_slice()).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?)
+    }
+}
+
+#[derive(Deserialize, PartialEq)]
+pub struct EventChunk {
+    pub id: String,
+    pub group: String,
+    pub metadata: String,
+    pub start_time: u32,
+    pub end_time: u32,
+    pub data: Vec<u8>
+}
+
+impl EventChunk {
+    pub fn parse(c: Chunk, enc_key: &[u8]) -> crate::Result<EventChunk> {
+        if c.variant != 3 {
+            return Err(crate::ErrorKind::ReplayParseError("tried to parse another chunk as header chunk".to_string()).into());
+        }
+        let mut event_chunk = bincode::deserialize::<EventChunk>(c.data.as_slice()).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?;
+        let cipher = Ecb::<Aes256, Pkcs7>::new_var(enc_key, Default::default()).map_err(|e| crate::ErrorKind::EncryptionError)?;
+        event_chunk.data = cipher.decrypt_vec(event_chunk.data.as_slice()).map_err(|e| crate::ErrorKind::EncryptionError)?;
+        Ok(event_chunk)
+    }
+}
+
+impl Debug for EventChunk {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.write_str(&*format!("event chunk in group {}", self.group))
     }
 }
