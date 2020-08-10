@@ -3,7 +3,7 @@ use serde::export::Formatter;
 use serde::{Deserialize, Deserializer};
 use serde::de::{Visitor, SeqAccess, Error};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 pub struct GUID(String);
 
 struct GUIDVisitor;

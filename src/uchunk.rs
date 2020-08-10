@@ -1,4 +1,4 @@
-use crate::skimmer::{Chunk, UReplay};
+use crate::ureplay::{Chunk, UReplay};
 
 use serde::Deserialize;
 use crate::uetypes::{GUID};
@@ -12,7 +12,7 @@ use aes_soft::{Aes128, Aes256};
 use block_modes::block_padding::Pkcs7;
 use bincode::ErrorKind;
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, Default, PartialEq)]
 pub struct HeaderChunk {
     pub network_magic: u32,
     pub network_version: u32,

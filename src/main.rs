@@ -1,14 +1,14 @@
 mod fnchunk;
 mod uetypes;
 mod uchunk;
-mod skimmer;
+mod ureplay;
 
 #[macro_use] extern crate error_chain;
 
-use skimmer::*;
+use ureplay::*;
 use std::time::SystemTime;
 use crate::uchunk::{HeaderChunk, EventChunk};
-use crate::fnchunk::Elimination;
+use crate::fnchunk::{Elimination, FNSkim};
 
 error_chain! {
     errors {
@@ -41,17 +41,8 @@ fn measure(block: fn() -> Result<()>) -> Result<()> {
 fn main() -> Result<()> {
     measure(|| {
         let replay= UReplay::parse(std::fs::read("season12.replay")?)?;
-        for x in replay.chunks {
-            if x.variant == 0 {
-                //println!("{:?}", bincode::deserialize::<HeaderChunk>(x.data.as_slice()))
-                println!("{:?}", HeaderChunk::parse(x));
-            } else if x.variant == 3 {
-                let e_chunk = EventChunk::parse(x, replay.meta.encryption_key.as_slice())?;
-                if e_chunk.group == "playerElim" {
-                    println!("{:?}", Elimination::parse(e_chunk))
-                }
-            }
-        }
+        let skim = FNSkim::skim(replay)?;
+        println!("{:#?}", skim);
         Ok(())
     });
     Ok(())
