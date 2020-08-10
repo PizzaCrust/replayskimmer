@@ -27,9 +27,9 @@ pub struct UReplay {
 
 #[derive(Deserialize, PartialEq)]
 pub struct Chunk {
-    variant: u32,
+    pub variant: u32,
     #[serde(with = "serde_bytes")]
-    data: Vec<u8>
+    pub data: Vec<u8>
 }
 
 impl Debug for Chunk {
