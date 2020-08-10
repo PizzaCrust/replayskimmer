@@ -41,9 +41,9 @@ impl Debug for Chunk {
 impl UReplay {
     pub fn parse(bytes: Vec<u8>) -> crate::Result<UReplay> {
         let mut slice = bytes.as_slice();
-        let mut replay: UReplay = bincode::deserialize_from(&mut slice).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?;
+        let mut replay: UReplay = bincode::deserialize_from(&mut slice)?;
         while !slice.is_empty() {
-            replay.chunks.push(bincode::deserialize_from(&mut slice).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?);
+            replay.chunks.push(bincode::deserialize_from(&mut slice)?);
         }
         Ok(replay)
     }

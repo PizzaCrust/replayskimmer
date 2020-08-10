@@ -12,22 +12,17 @@ use crate::fnchunk::{Elimination, FNSkim};
 
 error_chain! {
     errors {
-        BincodeError {
-            description("bincode failure")
-            display("bincode failure")
-        }
         ReplayParseError(msg: String) {
             description("replay parse failure")
             display("replay parse failure: {}", msg)
         }
-        EncryptionError {
-            description("encryption failure")
-            display("encryption failure")
-        }
     }
     foreign_links {
+        Bincode(bincode::Error);
         Io(std::io::Error);
         Time(std::time::SystemTimeError);
+        Enc(block_modes::BlockModeError);
+        Iv(block_modes::InvalidKeyIvLength);
     }
 }
 

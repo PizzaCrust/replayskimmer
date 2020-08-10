@@ -43,7 +43,7 @@ impl Elimination {
                 "Bot".to_string()
             }
             0x10 => {
-                let str: String = bincode::deserialize_from(cursor).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?;
+                let str: String = bincode::deserialize_from(cursor)?;
                 str
             }
             _ => {
@@ -93,10 +93,10 @@ impl FNSkim {
                     } else {
                         match &*e_chunk.metadata {
                             "AthenaMatchStats" => {
-                                skim.match_stats = bincode::deserialize(e_chunk.data.as_slice()).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?;
+                                skim.match_stats = bincode::deserialize(e_chunk.data.as_slice())?;
                             }
                             "AthenaTeamMatchStats" => {
-                                skim.team_stats = bincode::deserialize(e_chunk.data.as_slice()).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?;
+                                skim.team_stats = bincode::deserialize(e_chunk.data.as_slice())?;
                             }
                             _ => {}
                         }

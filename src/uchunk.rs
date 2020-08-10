@@ -36,7 +36,7 @@ impl HeaderChunk {
             //panic!("tried to parse another chunk as header chunk")
             return Err(crate::ErrorKind::ReplayParseError("tried to parse another chunk as header chunk".to_string()).into());
         }
-        Ok(bincode::deserialize::<HeaderChunk>(chunk.data.as_slice()).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?)
+        Ok(bincode::deserialize::<HeaderChunk>(chunk.data.as_slice())?)
     }
 }
 
@@ -56,9 +56,9 @@ impl EventChunk {
         if c.variant != 3 {
             return Err(crate::ErrorKind::ReplayParseError("tried to parse another chunk as event chunk".to_string()).into());
         }
-        let mut event_chunk = bincode::deserialize::<EventChunk>(c.data.as_slice()).map_err(|e| crate::Error::with_chain(e, crate::ErrorKind::BincodeError))?;
-        let cipher = Ecb::<Aes256, Pkcs7>::new_var(enc_key, Default::default()).map_err(|e| crate::ErrorKind::EncryptionError)?;
-        event_chunk.data = cipher.decrypt_vec(event_chunk.data.as_slice()).map_err(|e| crate::ErrorKind::EncryptionError)?;
+        let mut event_chunk = bincode::deserialize::<EventChunk>(c.data.as_slice())?;
+        let cipher = Ecb::<Aes256, Pkcs7>::new_var(enc_key, Default::default())?;
+        event_chunk.data = cipher.decrypt_vec(event_chunk.data.as_slice())?;
         Ok(event_chunk)
     }
 }
