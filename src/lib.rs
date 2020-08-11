@@ -43,7 +43,7 @@ mod tests {
     fn parse_full_replay(b: &mut Bencher)  {
         let file = std::fs::read("season12.replay").unwrap();
         b.iter(|| {
-            FNSkim::skim(UReplay::parse(file).unwrap(), true);
+            FNSkim::skim(UReplay::parse(file.clone()).unwrap(), true);
         });
     }
 }
