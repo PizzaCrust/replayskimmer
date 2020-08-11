@@ -5,6 +5,8 @@ use serde::Deserialize;
 use serde::export::fmt::Debug;
 use serde::export::Formatter;
 use crate::data::DataChunk;
+use crate::ErrorKind;
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
 pub struct NetFieldExport { //check if exported before deserialization!
@@ -67,6 +69,7 @@ pub struct DemoFrame {
     pub current_level_index: u32,
     pub time_seconds: f32,
     pub export_data: Vec<NetFieldExports>,
+    pub net_guid_val_to_path: HashMap<u32, String>,
     pub packets: Vec<PlaybackPacket>
 }
 
@@ -92,6 +95,42 @@ impl Debug for PlaybackPacket {
     }
 }
 
+#[derive(Default)]
+struct NetworkGUID(u32);
+
+impl NetworkGUID {
+    fn is_valid(&self) -> bool { self.0 > 0 }
+    fn is_default(&self) -> bool { self.0 == 1 }
+    // returns network guid + (net guid value, path name)
+    pub(crate) fn load_internal_object(cursor: &mut &[u8],
+                                is_exporting_net_guid_bunch: bool,
+                                load_object_recursion_counter: i32) -> crate::Result<(NetworkGUID, Option<(u32, String)>)> {
+        if load_object_recursion_counter > 16 {
+            //return Err(ErrorKind::ReplayParseError("Hit recursion limit".to_string()).into());
+            return Ok((NetworkGUID::default(), None));
+        }
+        let guid = NetworkGUID(cursor.read_int_packed()?);
+        if !guid.is_valid() {
+            return Ok((guid, None));
+        }
+        if guid.is_default() || is_exporting_net_guid_bunch {
+            let flags = cursor.read_u8()?;
+            if (flags & 1) != 0 { //bHasPath
+                let outer_guid = Self::load_internal_object(cursor, true, load_object_recursion_counter + 1)?;
+                let path_name = cursor.read_fstring()?;
+                if (flags & 4) != 0 { //bHasNetworkChecksum
+                    cursor.read_u32::<LE>()?; //network checksum
+                }
+                let set = Some((guid.0, path_name));
+                if is_exporting_net_guid_bunch {
+                    return Ok((guid, set));
+                }
+            }
+        }
+        Ok((guid, None))
+    }
+}
+
 impl DemoFrame {
     pub fn parse(cursor: &mut &[u8]) -> crate::Result<DemoFrame> {
         let mut frame = DemoFrame {
@@ -100,12 +139,15 @@ impl DemoFrame {
             ..Default::default()
         };
         frame.export_data = NetFieldExports::parse(cursor)?;
-        // net guid here but fuck that data
         let num_guids = cursor.read_int_packed()?;
         for _ in 0..num_guids {
-            let size = cursor.read_u32::<LE>()?;
-            cursor.read(vec![0u8; size as usize].as_mut_slice());
-            // todo ^ maybe change all of these skips to write to buffer to positional skips to increase performance?
+            let size = cursor.read_i32::<LE>()?;
+            let mut uobject = vec![0u8; size as usize];
+            cursor.read(uobject.as_mut_slice())?;
+            let o = NetworkGUID::load_internal_object(&mut uobject.as_slice(), true, 0)?;
+            if let Some((key, value)) = o.1 {
+                frame.net_guid_val_to_path.insert(key, value);
+            }
         }
         let num_streaming_levels = cursor.read_int_packed()?;
         for _ in 0..num_streaming_levels {
