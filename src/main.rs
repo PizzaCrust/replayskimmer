@@ -47,16 +47,16 @@ fn measure(block: fn() -> Result<()>) -> Result<()> {
 fn main() -> Result<()> {
     measure(|| {
         let replay= UReplay::parse(std::fs::read("season12.replay")?)?;
-        let skim = FNSkim::skim(replay, false)?;
-        println!("{:#?}", skim);
-        //for x in skim.data_chunks.expect("") {
-        //    let mut slice: &[u8] = x.data.as_slice();
-        //    //println!("{:#?}", data::net::DemoFrame::parse(&mut slice)?);
-        //    //while !slice.is_empty() {
-        //    //    demo_frames.push(data::net::DemoFrame::parse(&mut slice)?)
-        //    //}
-        //    //println!("{:#?}", demo_frames)
-        //}
+        let skim = FNSkim::skim(replay, true)?;
+        //println!("{:#?}", skim);
+        for x in skim.data_chunks.expect("") {
+            let mut slice: &[u8] = x.data.as_slice();
+            println!("{:#?}", data::net::DemoFrame::parse(&mut slice)?);
+            //while !slice.is_empty() {
+            //    demo_frames.push(data::net::DemoFrame::parse(&mut slice)?)
+            //}
+            //println!("{:#?}", demo_frames)
+        }
         Ok(())
     })?;
     Ok(())
