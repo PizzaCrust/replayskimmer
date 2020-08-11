@@ -1,3 +1,6 @@
+pub mod net;
+mod decompress;
+
 use crate::ureplay::Chunk;
 use crate::uchunk::Aes;
 use block_modes::BlockMode;
@@ -7,8 +10,6 @@ use std::io::Read;
 use serde::Deserialize;
 use serde::export::fmt::Debug;
 use serde::export::Formatter;
-
-mod decompress;
 
 #[derive(Deserialize, PartialEq)]
 pub struct DataChunk {

@@ -37,7 +37,7 @@ pub struct TeamStats {
 }
 
 impl Elimination {
-    fn parse_player(cursor: &mut Cursor<Vec<u8>>) -> crate::Result<String> {
+    fn parse_player(cursor: &mut &[u8]) -> crate::Result<String> {
         let indicator = cursor.read_u8()?;
         return Ok(match indicator {
             0x03 => {
@@ -60,7 +60,8 @@ impl Elimination {
         if e.group != "playerElim" {
             return Err(crate::ErrorKind::ReplayParseError("tried to parse another chunk as elim chunk".to_string()).into());
         }
-        let mut cursor = Cursor::new(e.data);
+        //let mut cursor = Cursor::new(e.data);
+        let mut cursor = e.data.as_slice();
         cursor.read(&mut [0u8; 85]);
         return Ok(Elimination {
             victim_id: Elimination::parse_player(&mut cursor)?,

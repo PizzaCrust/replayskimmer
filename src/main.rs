@@ -5,12 +5,16 @@ mod uetypes;
 mod uchunk;
 mod ureplay;
 
+extern crate strum;
 #[macro_use] extern crate error_chain;
+#[macro_use] extern crate strum_macros;
 
 use ureplay::*;
 use std::time::SystemTime;
 use crate::uchunk::{HeaderChunk, EventChunk};
 use crate::fnchunk::{Elimination, FNSkim};
+use crate::uetypes::UEReadExt;
+use crate::data::net::DemoFrame;
 
 error_chain! {
     errors {
@@ -43,8 +47,16 @@ fn measure(block: fn() -> Result<()>) -> Result<()> {
 fn main() -> Result<()> {
     measure(|| {
         let replay= UReplay::parse(std::fs::read("season12.replay")?)?;
-        let skim = FNSkim::skim(replay, true)?;
+        let skim = FNSkim::skim(replay, false)?;
         println!("{:#?}", skim);
+        //for x in skim.data_chunks.expect("") {
+        //    let mut slice: &[u8] = x.data.as_slice();
+        //    //println!("{:#?}", data::net::DemoFrame::parse(&mut slice)?);
+        //    //while !slice.is_empty() {
+        //    //    demo_frames.push(data::net::DemoFrame::parse(&mut slice)?)
+        //    //}
+        //    //println!("{:#?}", demo_frames)
+        //}
         Ok(())
     })?;
     Ok(())
