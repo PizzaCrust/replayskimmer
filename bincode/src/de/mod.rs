@@ -123,9 +123,9 @@ impl<'de, R: BincodeRead<'de>, O: Options> Deserializer<R, O> {
                 Ok(a)
             }
             false => {
-                let mut u8_bytes = vec![0u8; len as usize];
-                bytes.read(u8_bytes.as_mut_slice())?;
-                Ok(std::str::from_utf8(u8_bytes.as_slice())?.trim_matches
+                //let mut u8_bytes = vec![0u8; len as usize];
+                //bytes.read(u8_bytes.as_mut_slice())?;
+                Ok(std::str::from_utf8(vec.as_slice())?.trim_matches
                 (char::from(0))
                     .trim_matches('\u{0020}').to_string())
             }
