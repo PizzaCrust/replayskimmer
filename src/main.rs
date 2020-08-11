@@ -51,11 +51,12 @@ fn main() -> Result<()> {
         //println!("{:#?}", skim);
         for x in skim.data_chunks.expect("") {
             let mut slice: &[u8] = x.data.as_slice();
-            println!("{:#?}", data::net::DemoFrame::parse(&mut slice)?);
-            //while !slice.is_empty() {
-            //    demo_frames.push(data::net::DemoFrame::parse(&mut slice)?)
-            //}
-            //println!("{:#?}", demo_frames)
+            //println!("{:#?}", data::net::DemoFrame::parse(&mut slice)?);
+            let mut demo_frames: Vec<DemoFrame> = Vec::new();
+            while !slice.is_empty() {
+                demo_frames.push(data::net::DemoFrame::parse(&mut slice)?)
+            }
+            println!("{:#?}", demo_frames)
         }
         Ok(())
     })?;
