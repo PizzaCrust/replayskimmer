@@ -4,6 +4,7 @@ use std::io::Read;
 use serde::Deserialize;
 use serde::export::fmt::Debug;
 use serde::export::Formatter;
+use crate::data::DataChunk;
 
 #[derive(Debug, PartialEq)]
 pub struct NetFieldExport { //check if exported before deserialization!
@@ -133,10 +134,19 @@ impl DemoFrame {
                 packet.data = vec![0u8; size as usize];
                 cursor.read(packet.data.as_mut_slice())?;
             } else {
+                frame.packets.push(packet);
                 break;
             }
             frame.packets.push(packet);
         }
         Ok(frame)
+    }
+    pub fn parse_data(data_chunk: DataChunk) -> crate::Result<Vec<DemoFrame>> {
+        let mut slice = data_chunk.data.as_slice();
+        let mut demo_frames: Vec<DemoFrame> = Vec::new();
+        while !slice.is_empty() {
+            demo_frames.push(Self::parse(&mut slice)?);
+        }
+        Ok(demo_frames)
     }
 }

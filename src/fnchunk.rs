@@ -4,6 +4,7 @@ use byteorder::ReadBytesExt;
 use crate::ureplay::UReplay;
 use serde::Deserialize;
 use crate::data::DataChunk;
+use crate::data::net::DemoFrame;
 
 #[derive(Debug, PartialEq)]
 pub struct Elimination {
@@ -72,14 +73,14 @@ impl Elimination {
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default)]
 pub struct FNSkim {
     pub header: HeaderChunk,
     pub team_stats: TeamStats,
     pub match_stats: MatchStats,
     pub eliminations: Vec<Elimination>,
     #[cfg(target_os = "windows")]
-    pub data_chunks: Option<Vec<DataChunk>>
+    pub data_chunks: Option<Vec<DemoFrame>>
 }
 
 impl FNSkim {
@@ -121,7 +122,11 @@ impl FNSkim {
         }
         #[cfg(target_os = "windows")]
         if data {
-            skim.data_chunks = Some(data_chunks)
+            let mut vec: Vec<DemoFrame> = Vec::new();
+            for x in data_chunks {
+               vec.append(&mut DemoFrame::parse_data(x)?);
+            }
+            skim.data_chunks = Some(vec);
         }
         Ok(skim)
     }

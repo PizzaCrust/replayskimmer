@@ -6,6 +6,14 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "replayskimmer"
+path = "src/lib.rs"
+
+[[bin]]
+name = "replayskimmer"
+path = "src/main.rs"
+
 [dependencies]
 error-chain = "0.12.4"
 bincode = { path = "bincode" }
