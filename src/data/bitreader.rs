@@ -4,6 +4,7 @@ use crate::uetypes::{UnrealName, UEReadExt};
 use crate::ErrorKind;
 use crate::strum::AsStaticRef;
 
+// USE THIS AS MINIMALLY AS YOU CAN! REALLY SLOW!
 pub struct BitReader<'a> {
     handle: &'a [u8],
     bit_pos: usize,
