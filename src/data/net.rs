@@ -7,6 +7,7 @@ use serde::export::Formatter;
 use crate::data::DataChunk;
 use crate::ErrorKind;
 use std::collections::HashMap;
+use crate::data::packet::PacketParser;
 
 #[derive(Debug, PartialEq)]
 pub struct NetFieldExport { //check if exported before deserialization!
@@ -85,8 +86,8 @@ impl Default for PacketState {
 }
 
 pub struct PlaybackPacket {
-    state: PacketState,
-    data: Vec<u8>
+    pub state: PacketState,
+    pub data: Vec<u8>
 }
 
 impl Debug for PlaybackPacket {
@@ -132,7 +133,7 @@ impl NetworkGUID {
 }
 
 impl DemoFrame {
-    pub fn parse(cursor: &mut &[u8]) -> crate::Result<DemoFrame> {
+    pub fn parse(cursor: &mut &[u8], packet_parser: &mut PacketParser) -> crate::Result<DemoFrame> {
         let mut frame = DemoFrame {
             current_level_index: cursor.read_u32::<LE>()?,
             time_seconds: cursor.read_f32::<LE>()?,
@@ -179,15 +180,16 @@ impl DemoFrame {
                 frame.packets.push(packet);
                 break;
             }
+            packet_parser.received_raw_packet(&packet)?;
             frame.packets.push(packet);
         }
         Ok(frame)
     }
-    pub fn parse_data(data_chunk: DataChunk) -> crate::Result<Vec<DemoFrame>> {
+    pub fn parse_data(data_chunk: DataChunk, packet_parser: &mut PacketParser) -> crate::Result<Vec<DemoFrame>> {
         let mut slice = data_chunk.data.as_slice();
         let mut demo_frames: Vec<DemoFrame> = Vec::new();
         while !slice.is_empty() {
-            demo_frames.push(Self::parse(&mut slice)?);
+            demo_frames.push(Self::parse(&mut slice, packet_parser)?);
         }
         Ok(demo_frames)
     }

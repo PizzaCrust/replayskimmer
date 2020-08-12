@@ -1,3 +1,6 @@
+pub mod bitreader;
+pub use self::bitreader::BitReader;
+pub mod packet;
 pub mod net;
 mod decompress;
 

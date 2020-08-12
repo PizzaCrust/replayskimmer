@@ -5,6 +5,7 @@ use crate::ureplay::UReplay;
 use serde::Deserialize;
 use crate::data::DataChunk;
 use crate::data::net::DemoFrame;
+use crate::data::packet::PacketParser;
 
 #[derive(Debug, PartialEq)]
 pub struct Elimination {
@@ -123,8 +124,10 @@ impl FNSkim {
         #[cfg(target_os = "windows")]
         if data {
             let mut vec: Vec<DemoFrame> = Vec::new();
+            let mut packet_parser = PacketParser::new();
+            //todo in the future, don't packet parse by default and let user parse manually
             for x in data_chunks {
-               vec.append(&mut DemoFrame::parse_data(x)?);
+               vec.append(&mut DemoFrame::parse_data(x, &mut packet_parser)?);
             }
             skim.data_chunks = Some(vec);
         }

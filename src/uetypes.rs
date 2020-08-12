@@ -240,9 +240,58 @@ pub enum UnrealName {
 }
 
 impl UnrealName {
-    fn parse(id: i32) -> Option<Self> {
+    pub(crate) fn parse(id: i32) -> Option<Self> {
         for x in UnrealName::iter() {
             if (x as i32) == id {
+                return Some(x);
+            }
+        }
+        None
+    }
+}
+
+#[derive(Debug, EnumIter, Copy, Clone, AsStaticStr, PartialEq)]
+pub enum ChannelName { Control, Voice, Actor, None }
+
+impl Default for ChannelName {
+    fn default() -> Self {
+        ChannelName::None
+    }
+}
+
+impl ChannelName {
+    pub(crate) fn parse(str: String) -> Self {
+        for x in Self::iter() {
+            if x.as_static().to_string() == str {
+                return x;
+            }
+        }
+        ChannelName::None
+    }
+}
+
+#[repr(u32)]
+#[derive(Debug, EnumIter, Copy, Clone, AsStaticStr, PartialEq)]
+pub enum ChannelCloseReason {
+    Destroyed,
+    Dormancy,
+    LevelUnloaded,
+    Relevancy,
+    TearOff,
+    MAX = 15,
+    Error
+}
+
+impl Default for ChannelCloseReason {
+    fn default() -> Self {
+        ChannelCloseReason::Error
+    }
+}
+
+impl ChannelCloseReason {
+    pub(crate) fn parse(id: u32) -> Option<Self> {
+        for x in Self::iter() {
+            if (x as u32) == id {
                 return Some(x);
             }
         }
