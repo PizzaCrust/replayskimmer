@@ -49,6 +49,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitstream-io"
+version = "0.8.5"
+
+[[package]]
 name = "block-cipher"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -186,6 +190,7 @@ version = "0.1.0"
 dependencies = [
  "aes-soft",
  "bincode",
+ "bitstream-io",
  "block-modes",
  "byteorder",
  "error-chain",

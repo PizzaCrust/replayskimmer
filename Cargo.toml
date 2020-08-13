@@ -26,3 +26,4 @@ block-modes = "0.6.0"
 libloading = "0.6.2"
 strum = "0.18.0"
 strum_macros = "0.18.0"
+bitstream-io = { path = "bitstream-io" }
