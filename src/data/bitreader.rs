@@ -4,6 +4,7 @@ use crate::uetypes::{UnrealName, UEReadExt};
 use crate::ErrorKind;
 use crate::strum::AsStaticRef;
 use bitstream_io::LittleEndian;
+use crate::data::packet::{FVector, FRotator};
 
 // USE THIS AS MINIMALLY AS YOU CAN! REALLY SLOW!
 pub struct BitReader<'a> {
@@ -86,6 +87,49 @@ impl<'a> BitReader<'a> {
             vec.push(self.stream.read::<u8>(bits_to_read)?)
         }
         Ok(vec)
+    }
+
+    pub fn read_vector(&mut self) -> crate::Result<FVector> {
+        Ok(FVector(self.read_f32::<LE>()?, self.read_f32::<LE>()?, self.read_f32::<LE>()?))
+    }
+
+    pub fn read_packed_vector(&mut self, scale_factor: u32, max_bits: u32) -> crate::Result<FVector> {
+        let bits = self.read_serialized_int(max_bits)?;
+        let bias = 1 << (bits + 1);
+        let max = 1 << (bits + 2);
+        let dx = self.read_serialized_int(max)?;
+        let dy = self.read_serialized_int(max)?;
+        let dz = self.read_serialized_int(max)?;
+        let x = ((dx) - (bias)) / (scale_factor);
+        let y = ((dy) - (bias)) / (scale_factor);
+        let z = ((dz) - (bias)) / (scale_factor);
+        // ^ if we cast them all to float, we can get more accurate results but ig we dc for those
+        Ok(FVector(x as f32, y as f32, z as f32))
+    }
+
+    pub fn read_conditionally_serialized_quantized_vector(&mut self, default_vector: FVector) -> crate::Result<FVector> {
+        let b_was_serialized = self.read_bit()?;
+        if b_was_serialized {
+            let b_should_quantize = self.read_bit()?;
+            return if b_should_quantize { self.read_packed_vector(10, 24) } else { self.read_vector() }
+        }
+        Ok(default_vector)
+    }
+
+    pub fn read_rotation_short(&mut self) -> crate::Result<FRotator> {
+        let mut pitch: f32 = 0 as f32;
+        let mut yaw: f32 = 0 as f32;
+        let mut roll: f32 = 0 as f32;
+        if self.read_bit()? {
+            pitch = ((self.read_u16::<LE>()? as u32) * 360 / 65536) as f32;
+        }
+        if self.read_bit()? {
+            yaw = ((self.read_u16::<LE>()? as u32) * 360 / 65536) as f32;
+        }
+        if self.read_bit()? {
+            roll = ((self.read_u16::<LE>()? as u32) * 360 / 65536) as f32;
+        }
+        Ok(FRotator(pitch, yaw, roll))
     }
 
 }

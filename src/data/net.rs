@@ -96,14 +96,18 @@ impl Debug for PlaybackPacket {
     }
 }
 
-#[derive(Default)]
-struct NetworkGUID(u32);
+#[derive(Debug, Default)]
+pub struct NetworkGUID(u32);
 
 impl NetworkGUID {
-    fn is_valid(&self) -> bool { self.0 > 0 }
-    fn is_default(&self) -> bool { self.0 == 1 }
+    #[inline]
+    pub fn is_valid(&self) -> bool { self.0 > 0 }
+    #[inline]
+    pub fn is_default(&self) -> bool { self.0 == 1 }
+    #[inline]
+    pub fn is_dynamic(&self) -> bool { self.0 > 0 && (self.0 & 1) != 1 }
     // returns network guid + (net guid value, path name)
-    pub(crate) fn load_internal_object(cursor: &mut &[u8],
+    pub(crate) fn load_internal_object<T: Read>(cursor: &mut T,
                                 is_exporting_net_guid_bunch: bool,
                                 load_object_recursion_counter: i32) -> crate::Result<(NetworkGUID, Option<(u32, String)>)> {
         if load_object_recursion_counter > 16 {
