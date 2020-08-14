@@ -15,7 +15,6 @@ pub struct BitReader<'a> {
     stream: bitstream_io::BitReader<&'a mut &'a[u8], LittleEndian>
 }
 
-//todo deprecate
 impl<'a> BitReader<'a> {
 
     pub fn new<'b>(handle: &'b mut &'b [u8], bit_size: usize) -> BitReader {

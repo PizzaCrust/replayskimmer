@@ -24,7 +24,8 @@ struct DataBunch {
     b_ignore_rpcs: bool,
     b_dormant: bool,
     close_reason: ChannelCloseReason,
-    data: Vec<u8>
+    data: Vec<u8>,
+    data_bit_size: usize, // represent data in bits, so we dont read emptiness
 }
 
 #[derive(Default, Copy, Clone)]
@@ -36,7 +37,7 @@ struct UChannel {
 pub struct PacketParser {
     packet_index: i32, // 0
     in_reliable: i32, // 0
-    channels: [UChannel; 32767],
+    channels: [Option<UChannel>; 32767],
 }
 
 impl PacketParser {
@@ -44,7 +45,7 @@ impl PacketParser {
         PacketParser {
             packet_index: 0,
             in_reliable: 0,
-            channels: [UChannel::default(); 32767]
+            channels: [Option::None; 32767]
         }
     }
 
@@ -96,8 +97,36 @@ impl PacketParser {
             }
             let mut bunch_data_bits = reader.read_serialized_int((1024 * 2) * 8)?;
             //bunch.data = vec![0u8; (bunch_data_bits / 8) as usize];
+            bunch.data_bit_size = bunch_data_bits as usize;
             bunch.data = reader.read_bits(&mut bunch_data_bits)?;
+            self.process_bunch(bunch)?;
         }
         Ok(())
+    }
+
+    #[inline]
+    fn process_bunch(&mut self, bunch: DataBunch) -> crate::Result<()> {
+        //let reader = BitReader::new(&mut bunch.data.as_slice(), bunch.data_bit_size);
+        let channel_exists = self.channels[bunch.ch_index as usize].is_some();
+        if bunch.b_is_reliable && bunch.ch_seq <= self.in_reliable {
+            return Ok(()) // packet already processed
+        }
+        if !channel_exists && !bunch.b_is_reliable {
+            if !(bunch.b_open && (bunch.b_close || bunch.b_partial)) {
+                return Ok(())
+            }
+        }
+        if !channel_exists {
+            self.channels[bunch.ch_index as usize] = Some(UChannel {
+                name: bunch.ch_name,
+                index: bunch.ch_index
+            });
+        }
+        self.received_next_bunch(bunch);
+        Ok(())
+    }
+
+    fn received_next_bunch(&mut self, bunch: DataBunch) -> crate::Result<()> {
+        unimplemented!();
     }
 }
