@@ -49,7 +49,6 @@ impl<'a> BitReader<'a> {
     pub fn read_byte(&mut self) -> crate::Result<u8> {
         let mut byte: [u8; 1] = [0u8];
         self.read(&mut byte)?;
-        self.bit_pos += 8;
         Ok(byte[0])
     }
 
