@@ -52,7 +52,12 @@ impl PacketParser {
     pub fn received_raw_packet(&mut self, packet: &PlaybackPacket) -> crate::Result<()> {
         let mut last_byte = packet.data[packet.data.len() - 1];
         if last_byte != 0 {
-            self.received_packet(BitReader::new(&mut packet.data.as_slice()))?;
+            let mut bit_size = (packet.data.len() * 8) - 1;
+            while !((last_byte & 0x80) >= 1) {
+                last_byte *= 2;
+                bit_size -= 1;
+            }
+            self.received_packet(BitReader::new(&mut packet.data.as_slice(), bit_size))?;
             return Ok(())
         }
         Err(ErrorKind::ReplayParseError("malformed packet".to_string()).into())

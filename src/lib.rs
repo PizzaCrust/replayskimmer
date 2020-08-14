@@ -56,7 +56,7 @@ mod tests {
         //let mut reader = BitAndByteReader::new(&[0b1100]);
         //let mut reader = BitReader::new(&[0b1100]);
         let mut bytes: &[u8] = &[0x23];
-        let mut reader = crate::data::bitreader::BitReader::new(&mut bytes);
+        let mut reader = crate::data::bitreader::BitReader::new(&mut bytes, 8);
         assert_eq!(reader.read_bit().unwrap(), true);
         assert_eq!(reader.read_bit().unwrap(), true);
         assert_eq!(reader.read_bit().unwrap(), false);
@@ -70,7 +70,7 @@ mod tests {
     #[test]
     fn bytes() {
         let mut bytes: &[u8] = &[0x01, 0x02, 0x03];
-        let mut reader = crate::data::bitreader::BitReader::new(&mut bytes);
+        let mut reader = crate::data::bitreader::BitReader::new(&mut bytes, 24);
         assert_eq!(reader.read_byte().unwrap(), 0x01);
         assert_eq!(reader.read_byte().unwrap(), 0x02);
         assert_eq!(reader.read_byte().unwrap(), 0x03);
@@ -79,18 +79,18 @@ mod tests {
     #[test]
     fn int_packed() {
         let mut bits: &[u8] = &[0xCC];
-        let mut reader = crate::data::BitReader::new(&mut bits);
+        let mut reader = crate::data::BitReader::new(&mut bits, 8);
         assert_eq!(reader.read_int_packed().expect(""), 102u32);
         let mut bytes: &[u8] = &[0x24, 0x40];
-        assert_eq!(BitReader::new(&mut bytes).read_int_packed().expect(""), 18u32);
+        assert_eq!(BitReader::new(&mut bytes, 16).read_int_packed().expect(""), 18u32);
     }
 
     #[test]
     fn serialized_int() {
         let mut bits: &[u8] = &[0x64];
         let mut bits2: &[u8] = &[0x01];
-        let mut reader = crate::data::BitReader::new(&mut (bits));
-        let mut reader1 = crate::data::BitReader::new(&mut (bits2));
+        let mut reader = crate::data::BitReader::new(&mut (bits), 8);
+        let mut reader1 = crate::data::BitReader::new(&mut (bits2), 8);
         assert_eq!(reader.read_serialized_int(3).unwrap(), 0u32);
         assert_eq!(reader1.read_serialized_int(2).unwrap(), 1u32);
     }
@@ -98,7 +98,7 @@ mod tests {
     #[test]
     fn fname() {
         let mut bits: &[u8] = &[0x99, 0xF1];
-        let mut reader = crate::data::BitReader::new(&mut (bits));
+        let mut reader = crate::data::BitReader::new(&mut (bits), 16);
         assert_eq!(reader.read_bit_fname().expect(""), "Actor");
         assert_eq!(9, reader.pos())
     }
@@ -106,7 +106,7 @@ mod tests {
     #[test]
     fn bits() {
         let mut cursor: &[u8] = &[0x23, 0x01];
-        let mut reader = BitReader::new(&mut cursor);
+        let mut reader = BitReader::new(&mut cursor, 16);
         assert_eq!(reader.read_bits(&mut 7u32).expect(""), vec![0x23]);
         assert_eq!(reader.remaining_len(), 9);
         reader.read_bit();

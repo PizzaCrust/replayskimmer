@@ -7,7 +7,8 @@ use bitstream_io::LittleEndian;
 
 // USE THIS AS MINIMALLY AS YOU CAN! REALLY SLOW!
 pub struct BitReader<'a> {
-    inital_size: usize,
+    bit_size: usize,
+    bit_pos: usize,
     //handle: &'a [u8],
     //bit_pos: usize,
     //last_bit: usize,
@@ -17,35 +18,38 @@ pub struct BitReader<'a> {
 //todo deprecate
 impl<'a> BitReader<'a> {
 
-    pub fn new<'b>(handle: &'b mut &'b [u8]) -> BitReader {
+    pub fn new<'b>(handle: &'b mut &'b [u8], bit_size: usize) -> BitReader {
         BitReader {
-            inital_size: handle.len() * 8,
+            bit_size,
+            bit_pos: 0,
             stream: bitstream_io::BitReader::endian(handle, LittleEndian)
         }
     }
 
     pub fn read_bit(&mut self) -> crate::Result<bool> {
+        self.bit_pos += 1;
         Ok(self.stream.read_bit()?)
     }
 
     #[inline]
     pub fn remaining_len(&self) -> usize {
-        (self.stream.reader.len() * 8) + (self.stream.bitqueue.len() as usize)
+        self.bit_size - self.bit_pos
     }
 
     #[inline]
     pub fn pos(&self) -> usize {
-        self.inital_size - self.remaining_len()
+        self.bit_pos
     }
 
     #[inline]
     pub fn at_end(&self) -> bool {
-        self.remaining_len() > 0
+        self.remaining_len() <= 0
     }
 
     pub fn read_byte(&mut self) -> crate::Result<u8> {
         let mut byte: [u8; 1] = [0u8];
         self.read(&mut byte)?;
+        self.bit_pos += 8;
         Ok(byte[0])
     }
 
@@ -79,6 +83,7 @@ impl<'a> BitReader<'a> {
                 bits_to_read = 8;
             }
             *bits -= bits_to_read;
+            self.bit_pos += bits_to_read as usize;
             vec.push(self.stream.read::<u8>(bits_to_read)?)
         }
         Ok(vec)
@@ -90,6 +95,7 @@ impl<'a> Read for BitReader<'a> {
     // VERY INEFFICIENT! We copy bytes from original slice!
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         self.stream.read_bytes(buf);
+        self.bit_pos += (buf.len() * 8);
         Ok(buf.len())
     }
 }
