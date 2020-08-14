@@ -43,6 +43,8 @@ mod tests {
     use bitstream_io::LittleEndian;
     use std::io::Read;
     use crate::data::packet::FVector;
+    use crate::data::net::NetworkGUID;
+    use crate::data::net::StringExt;
 
     #[bench]
     fn parse_full_replay(b: &mut Bencher)  {
@@ -146,5 +148,39 @@ mod tests {
         assert_eq!(c.read_packed_vector(100, 30).unwrap(), FVector(179955 as f32, -181401 as f32, -2192 as f32));
         assert_eq!(d.read_packed_vector(100, 30).unwrap(), FVector(188546 as f32, -175249 as f32, -2610 as f32));
         assert_eq!(e.read_packed_vector(1, 24).unwrap(), FVector(0 as f32, 0 as f32, 0 as f32))
+    }
+
+    #[test]
+    fn netguid() {
+        assert_eq!(NetworkGUID(1u32), NetworkGUID(1u32));
+        assert_ne!(NetworkGUID(1u32), NetworkGUID(0u32));
+    }
+
+    #[test]
+    fn remove_all_path_prefixes() {
+        assert_eq!("Prop_RockPile_06_C", "/Game/Athena/Apollo/Environments/BuildingActors/Rocks/Prop_RockPile_06.Prop_RockPile_06_C".to_string().remove_all_path_prefixes());
+        assert_eq!("PBWA_W1_StairW_C", "/Game/Building/ActorBlueprints/Player/Wood/L1/PBWA_W1_StairW.PBWA_W1_StairW_C".to_string().remove_all_path_prefixes());
+        assert_eq!("B_Shotgun_Standard_Athena_C", "/Game/Weapons/FORT_Shotguns/Blueprints/B_Shotgun_Standard_Athena.B_Shotgun_Standard_Athena_C".to_string().remove_all_path_prefixes());
+        assert_eq!("/Game/Weapons/FORT_Shotguns/Blueprints/B_Shotgun_Standard_Athena/B_Shotgun_Standard_Athena_C", "/Game/Weapons/FORT_Shotguns/Blueprints/B_Shotgun_Standard_Athena/B_Shotgun_Standard_Athena_C".to_string().remove_all_path_prefixes())
+    }
+
+    #[test]
+    fn clean_path_suffix() {
+        assert_eq!("LF_7x12_Parent", "LF_7x12_Parent2_2".to_string().clean_path_suffix());
+        assert_eq!("LF_Athena_POI_25x", "LF_Athena_POI_25x31_5".to_string().clean_path_suffix());
+        assert_eq!("Apollo_Tree_RedAlder", "Apollo_Tree_RedAlder248".to_string().clean_path_suffix());
+        assert_eq!("Apllo_Tree_Birch_Large", "Apllo_Tree_Birch_Large175".to_string().clean_path_suffix());
+        assert_eq!("FortTeamPrivateInfo_ClassNetCache", "FortTeamPrivateInfo_ClassNetCache".to_string().clean_path_suffix())
+    }
+
+    #[test]
+    fn remove_path_prefix() {
+        assert_eq!("FortPickupAthena", "Default__FortPickupAthena".to_string().remove_path_prefix("Default__".to_string()));
+        assert_eq!("AthenaAircraft_C", "Default__AthenaAircraft_C".to_string().remove_path_prefix("Default__".to_string()));
+        assert_eq!("FortTeamPrivateInfo_ClassNetCache", "FortTeamPrivateInfo_ClassNetCache".to_string().remove_path_prefix("Default__".to_string()));
+        assert_eq!("DamageSet", "DamageSet".to_string().remove_path_prefix("Default__".to_string()));
+        assert_eq!("_ClassNetCache", "FortTeamPrivateInfo_ClassNetCache".to_string().remove_path_prefix("FortTeamPrivateInfo".to_string()));
+        assert_eq!("Set", "DamageSet".to_string().remove_path_prefix("Damage".to_string()));
+        assert_eq!("DamageSet", "DamageSet".to_string().remove_path_prefix("".to_string()));
     }
 }

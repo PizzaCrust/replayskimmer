@@ -5,6 +5,7 @@ use crate::uetypes::{ChannelName, ChannelCloseReason, UEReadExt, UnrealName};
 use byteorder::{ReadBytesExt, LE};
 use crate::strum::AsStaticRef;
 use crate::data::BitReader;
+use std::collections::HashMap;
 
 #[derive(Default, Debug, Clone)]
 struct DataBunch {
@@ -35,11 +36,18 @@ struct UChannel {
     actor: Option<Actor>
 }
 
+#[derive(Default)]
+pub struct NetGuidCache {
+    /// Map network guids to path names
+    pub net_guid_to_path: HashMap<NetworkGUID, String>
+}
+
 pub struct PacketParser {
     packet_index: i32, // 0
     in_reliable: i32, // 0
     channels: Vec<Option<UChannel>>, //32767
-    partial_bunch: Option<DataBunch>
+    partial_bunch: Option<DataBunch>,
+    pub net_guid_cache: NetGuidCache
 }
 
 // x, y, z
@@ -70,7 +78,8 @@ impl PacketParser {
             packet_index: 0,
             in_reliable: 0,
             channels: vec,
-            partial_bunch: Option::None
+            partial_bunch: Option::None,
+            net_guid_cache: NetGuidCache::default(),
         }
     }
 
@@ -214,22 +223,34 @@ impl PacketParser {
         Ok(())
     }
 
+    /// Invokes NetworkGuid::load_internal_object and caches results in packet parser's net guid cache.
+    fn load_internal_object<T: Read>(&mut self,
+                                     cursor: &mut T,
+                                     is_exporting_net_guid_bunch: bool,
+                                     load_object_recursion_counter: i32) -> crate::Result<NetworkGUID> {
+        let (guid, cache_entry) = NetworkGUID::load_internal_object(cursor, is_exporting_net_guid_bunch, load_object_recursion_counter)?;
+        if let Some((guid, path)) = cache_entry {
+            self.net_guid_cache.net_guid_to_path.insert(guid, path);
+        }
+        Ok(guid)
+    }
+
     fn process_bunch(&mut self, bunch: &DataBunch, mut reader: BitReader) -> crate::Result<()>  {
-        let mut channel = self.channels[bunch.ch_index as usize].as_mut().expect("???");
+        let channel = self.channels[bunch.ch_index as usize].as_ref().expect("???");
         if channel.actor.is_none() {
             if !bunch.b_open {
                 return Ok(()) // actor channel without open packet
             }
             let mut in_actor = Actor {
-                actor_net_guid: NetworkGUID::load_internal_object(&mut reader, false, 0)?.0, // todo look at exports perhaps?
+                actor_net_guid: self.load_internal_object(&mut reader, false, 0)?,
                 ..Default::default()
             };
             if reader.at_end() && in_actor.actor_net_guid.is_dynamic() {
                 return Ok(())
             }
             if in_actor.actor_net_guid.is_dynamic() {
-                in_actor.archetype = NetworkGUID::load_internal_object(&mut reader, false, 0)?.0;
-                in_actor.level = NetworkGUID::load_internal_object(&mut reader, false, 0)?.0;
+                in_actor.archetype = self.load_internal_object(&mut reader, false, 0)?;
+                in_actor.level = self.load_internal_object(&mut reader, false, 0)?;
                 in_actor.location = reader.read_conditionally_serialized_quantized_vector(FVector::default())?;
                 if reader.read_bit()? {
                     in_actor.rotation = reader.read_rotation_short()?;
@@ -239,11 +260,16 @@ impl PacketParser {
                 in_actor.scale = reader.read_conditionally_serialized_quantized_vector(FVector(1 as f32, 1 as f32, 1 as f32))?;
                 in_actor.velocity = reader.read_conditionally_serialized_quantized_vector(FVector::default())?;
             }
-            channel.actor = Some(in_actor);
-            //todo channelopened + other thing
-            unimplemented!();
+            if let Some(path) = self.net_guid_cache.net_guid_to_path.get(&in_actor.archetype) {
+                if path == "BP_ReplayPC_Athena_C" { // todo short term solution player controller groups
+                    reader.read_byte()?;
+                }
+            }
+            //todo channel open
+            self.channels[bunch.ch_index as usize].as_mut().expect("???").actor = Some(in_actor); // weird rust semantics, if we borrowed this as a mutable reference initially, load object would fail to compile
         }
-        unimplemented!();
+        //todo
+        //unimplemented!();
         Ok(())
     }
 

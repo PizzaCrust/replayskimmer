@@ -70,7 +70,7 @@ pub struct DemoFrame {
     pub current_level_index: u32,
     pub time_seconds: f32,
     pub export_data: Vec<NetFieldExports>,
-    pub net_guid_val_to_path: HashMap<u32, String>,
+    //pub net_guid_val_to_path: HashMap<u32, String>, todo return in the future
     pub packets: Vec<PlaybackPacket>
 }
 
@@ -96,8 +96,47 @@ impl Debug for PlaybackPacket {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct NetworkGUID(u32);
+#[derive(Debug, Default, PartialEq, Eq, Hash, Copy, Clone)]
+pub struct NetworkGUID(pub u32);
+
+pub trait StringExt {
+    fn remove_all_path_prefixes(self) -> String;
+    fn remove_path_prefix(self, to_remove: String) -> String;
+    fn clean_path_suffix(self) -> String;
+}
+
+impl StringExt for String {
+    fn remove_all_path_prefixes(self) -> String {
+        for (index, x) in self.char_indices().rev() {
+            match x {
+                '.' => {
+                    return (&self[(index + 1)..self.len()]).to_owned()
+                }
+                '/' => {
+                    return self;
+                }
+                _ => {}
+            }
+        }
+        self.remove_path_prefix("Default__".to_string())
+    }
+
+    fn remove_path_prefix(self, to_remove: String) -> String {
+        if to_remove.len() > self.len() {
+            return self;
+        }
+        self.strip_prefix(&*to_remove).unwrap_or_else(|| &*self).to_string()
+    }
+
+    fn clean_path_suffix(self) -> String {
+        for (i, x) in self.char_indices().rev() {
+            if !x.is_numeric() && x != '_' {
+                return (&self[0..(i + 1)]).to_owned()
+            }
+        }
+        self
+    }
+}
 
 impl NetworkGUID {
     #[inline]
@@ -109,7 +148,7 @@ impl NetworkGUID {
     // returns network guid + (net guid value, path name)
     pub(crate) fn load_internal_object<T: Read>(cursor: &mut T,
                                 is_exporting_net_guid_bunch: bool,
-                                load_object_recursion_counter: i32) -> crate::Result<(NetworkGUID, Option<(u32, String)>)> {
+                                load_object_recursion_counter: i32) -> crate::Result<(NetworkGUID, Option<(NetworkGUID, String)>)> {
         if load_object_recursion_counter > 16 {
             //return Err(ErrorKind::ReplayParseError("Hit recursion limit".to_string()).into());
             return Ok((NetworkGUID::default(), None));
@@ -126,7 +165,7 @@ impl NetworkGUID {
                 if (flags & 4) != 0 { //bHasNetworkChecksum
                     cursor.read_u32::<LE>()?; //network checksum
                 }
-                let set = Some((guid.0, path_name));
+                let set = Some((guid.clone(), path_name.remove_all_path_prefixes()));
                 if is_exporting_net_guid_bunch {
                     return Ok((guid, set));
                 }
@@ -151,7 +190,8 @@ impl DemoFrame {
             cursor.read(uobject.as_mut_slice())?;
             let o = NetworkGUID::load_internal_object(&mut uobject.as_slice(), true, 0)?;
             if let Some((key, value)) = o.1 {
-                frame.net_guid_val_to_path.insert(key, value);
+                //frame.net_guid_val_to_path.insert(key, value);
+                packet_parser.net_guid_cache.net_guid_to_path.insert(key, value);
             }
         }
         let num_streaming_levels = cursor.read_int_packed()?;

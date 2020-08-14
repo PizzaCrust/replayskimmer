@@ -100,10 +100,10 @@ impl<'a> BitReader<'a> {
         let dx = self.read_serialized_int(max)?;
         let dy = self.read_serialized_int(max)?;
         let dz = self.read_serialized_int(max)?;
-        let x = ((dx) - (bias)) / (scale_factor);
-        let y = ((dy) - (bias)) / (scale_factor);
-        let z = ((dz) - (bias)) / (scale_factor);
-        // ^ if we cast them all to float, we can get more accurate results but ig we dc for those
+        let x = ((dx as f32) - (bias as f32)) / (scale_factor as f32);
+        let y = ((dy as f32) - (bias as f32)) / (scale_factor as f32);
+        let z = ((dz as f32) - (bias as f32)) / (scale_factor as f32);
+        // ^ dont cast as f32 if want to succeed in packet vector tests :)
         Ok(FVector(x as f32, y as f32, z as f32))
     }
 
