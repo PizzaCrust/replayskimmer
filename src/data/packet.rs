@@ -6,7 +6,7 @@ use byteorder::{ReadBytesExt, LE};
 use crate::strum::AsStaticRef;
 use crate::data::BitReader;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 struct DataBunch {
     packet_id: i32,
     ch_index: u32,
@@ -38,6 +38,7 @@ pub struct PacketParser {
     packet_index: i32, // 0
     in_reliable: i32, // 0
     channels: [Option<UChannel>; 32767],
+    partial_bunch: Option<DataBunch>
 }
 
 impl PacketParser {
@@ -45,7 +46,8 @@ impl PacketParser {
         PacketParser {
             packet_index: 0,
             in_reliable: 0,
-            channels: [Option::None; 32767]
+            channels: [Option::None; 32767],
+            partial_bunch: Option::None
         }
     }
 
@@ -99,13 +101,13 @@ impl PacketParser {
             //bunch.data = vec![0u8; (bunch_data_bits / 8) as usize];
             bunch.data_bit_size = bunch_data_bits as usize;
             bunch.data = reader.read_bits(&mut bunch_data_bits)?;
-            self.process_bunch(bunch)?;
+            self.parse_bunch(bunch)?;
         }
         Ok(())
     }
 
     #[inline]
-    fn process_bunch(&mut self, bunch: DataBunch) -> crate::Result<()> {
+    fn parse_bunch(&mut self, bunch: DataBunch) -> crate::Result<()> {
         //let reader = BitReader::new(&mut bunch.data.as_slice(), bunch.data_bit_size);
         let channel_exists = self.channels[bunch.ch_index as usize].is_some();
         if bunch.b_is_reliable && bunch.ch_seq <= self.in_reliable {
@@ -126,7 +128,92 @@ impl PacketParser {
         Ok(())
     }
 
-    fn received_next_bunch(&mut self, bunch: DataBunch) -> crate::Result<()> {
-        unimplemented!();
+    #[inline]
+    fn received_next_bunch(&mut self, mut bunch: DataBunch) -> crate::Result<()> {
+        if bunch.b_is_reliable {
+            self.in_reliable = bunch.ch_seq;
+        }
+        if bunch.b_partial {
+            if bunch.b_partial_initial {
+                if self.partial_bunch.is_some() {
+                    let partial_bunch = self.partial_bunch.as_ref().unwrap();
+                    if !partial_bunch.b_partial_final {
+                        if partial_bunch.b_is_reliable {
+                            if bunch.b_is_reliable {
+                                return Ok(())
+                            }
+                            return Ok(())
+                        }
+                    }
+                    self.partial_bunch = Option::None;
+                }
+                self.partial_bunch = Some(bunch.clone());
+                return Ok(())
+            } else {
+                let mut b_sequence_matches = false;
+                if self.partial_bunch.is_some() {
+                    let partial_bunch = self.partial_bunch.as_mut().unwrap();
+                    let b_reliable_sequences_matches = bunch.ch_seq == partial_bunch.ch_seq + 1;
+                    let b_unreliable_sequence_matches = b_reliable_sequences_matches || (bunch.ch_seq == partial_bunch.ch_seq);
+                    b_sequence_matches = if partial_bunch.b_is_reliable { b_reliable_sequences_matches } else { b_unreliable_sequence_matches };
+                    return if !partial_bunch.b_partial_final && b_sequence_matches && partial_bunch.b_is_reliable == bunch.b_is_reliable {
+                        if !bunch.b_has_package_map_exports && bunch.data.len() > 0 {
+                            partial_bunch.data.append(&mut bunch.data);
+                            partial_bunch.data_bit_size += bunch.data_bit_size;
+                        }
+                        if !bunch.b_has_package_map_exports && !bunch.b_partial_final && (bunch.data_bit_size % 8 != 0) {
+                            return Ok(()) // not byte aligned
+                        }
+                        partial_bunch.ch_seq = bunch.ch_seq;
+                        if bunch.b_partial_final {
+                            if bunch.b_has_package_map_exports {
+                                return Ok(())
+                            }
+                            partial_bunch.b_partial_final = true;
+                            partial_bunch.b_close = bunch.b_close;
+                            partial_bunch.b_dormant = bunch.b_dormant;
+                            partial_bunch.close_reason = bunch.close_reason;
+                            partial_bunch.b_is_replication_paused = bunch.b_is_replication_paused;
+                            partial_bunch.b_has_must_be_mapped_guids = bunch.b_has_must_be_mapped_guids;
+                            let clone = partial_bunch.clone();
+                            self.received_sequenced_bunch(clone);
+                            return Ok(());
+                        }
+                        Ok(())
+                    } else {
+                        Ok(())
+                    }
+                }
+            }
+        }
+        self.received_sequenced_bunch(bunch);
+        Ok(())
     }
+
+    fn process_bunch(&mut self, bunch: &DataBunch, reader: BitReader) -> crate::Result<()>  {
+        Ok(()) //TODO
+    }
+
+    fn received_actor_bunch(&mut self, bunch: &DataBunch) -> crate::Result<()> {
+        let mut slice = bunch.data.as_slice();
+        let mut reader = BitReader::new(&mut slice, bunch.data_bit_size);
+        if bunch.b_has_must_be_mapped_guids {
+            let guids = reader.read_u16::<LE>()?;
+            for x in 0..guids {
+                reader.read_int_packed()?;
+            }
+        }
+        self.process_bunch(bunch, reader);
+        Ok(())
+    }
+
+    fn received_sequenced_bunch(&mut self, bunch: DataBunch) -> crate::Result<bool> {
+        self.received_actor_bunch(&bunch);
+        if bunch.b_close {
+            self.channels[bunch.ch_index as usize] = None;
+            return Ok(true)
+        }
+        Ok(false)
+    }
+
 }
