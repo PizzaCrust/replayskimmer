@@ -235,6 +235,46 @@ impl PacketParser {
         Ok(guid)
     }
 
+    fn read_content_block_header(&mut self,
+                                 bunch: &DataBunch,
+                                 bit_reader: &mut BitReader,
+                                 b_out_has_rep_layout: &mut bool,
+                                 b_object_deleted: &mut bool) -> crate::Result<u32> {
+        *b_object_deleted = false;
+        *b_out_has_rep_layout = bit_reader.read_bit()?;
+        let b_is_actor = bit_reader.read_bit()?;
+        if b_is_actor {
+            let actor = self.channels[bunch.ch_index as usize].as_ref().expect("???").actor.as_ref().expect("???");
+            return if actor.archetype != NetworkGUID::default() { Ok(actor.archetype.0) } else { Ok(actor.actor_net_guid.0) } //todo idk about this one chief
+        }
+        let net_guid = self.load_internal_object(bit_reader, false, 0)?;
+        let b_stably_named = bit_reader.read_bit()?;
+        if b_stably_named {
+            return Ok(net_guid.0)
+        }
+        let class_net_guid = self.load_internal_object(bit_reader, false, 0)?;
+        if !class_net_guid.is_valid() { // todo might be bad
+            *b_object_deleted = true;
+        }
+        Ok(class_net_guid.0)
+    }
+
+    /// returns rep object, the payload bits & payload bit size
+    fn read_content_block_payload(&mut self,
+                                  bunch: &DataBunch,
+                                  b_object_deleted: &mut bool,
+                                  b_out_has_rep_layout: &mut bool,
+                                  bit_reader: &mut BitReader) -> crate::Result<(u32, Option<(Vec<u8>, u32)>)> {
+        let rep_object = self.read_content_block_header(bunch, bit_reader, b_out_has_rep_layout, b_object_deleted)?;
+        if *b_object_deleted {
+            return Ok((rep_object, None))
+        }
+        let mut num_payload_bits = bit_reader.read_int_packed()?;
+        let mut bits_size = num_payload_bits;
+        let bits = bit_reader.read_bits(&mut num_payload_bits)?;
+        Ok((rep_object, Some((bits, bits_size))))
+    }
+
     fn process_bunch(&mut self, bunch: &DataBunch, mut reader: BitReader) -> crate::Result<()>  {
         let channel = self.channels[bunch.ch_index as usize].as_ref().expect("???");
         if channel.actor.is_none() {
@@ -270,6 +310,19 @@ impl PacketParser {
         }
         //todo
         //unimplemented!();
+        while !reader.at_end() {
+            let mut b_object_deleted = false;
+            let mut b_out_has_rep_layout = false;
+            let (rep_object, bit_opt) = self.read_content_block_payload(bunch, &mut b_object_deleted, &mut b_out_has_rep_layout, &mut reader)?;
+            if b_object_deleted {
+                continue; //continue todo
+            }
+            let (bit_vec, bits_size) = bit_opt.expect("???");
+            if rep_object == 0 || bits_size <= 0 {
+                continue; //continue todo
+            }
+            //todo receive replicator bunch
+        }
         Ok(())
     }
 
